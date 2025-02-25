@@ -1,0 +1,235 @@
+## 3.4 Relational Algebra - Basic Operators 2
+
+### Reduction Operators
+- For reducing rows, we use the _selection operator_ $\sigma$.
+- For reducing columns, we use the _projection operator_ $\pi$.
+
+### Selection $\sigma$
+- Notation: $\sigma_c(R)$, where:
+  - $R$ is an input relation
+  - $c$ is a condition: $=,<,>,and,or,not$
+- The output is a subset of $R$ that satisfies the condition $c$. The schema is the same as $R$.
+
+### Projection $\pi$
+- Notation: $\pi_{A_1, ..., A_n}(R)$, where:
+  - $R$ is an input relation with schema $R(B_1, ..., B_n)$
+  - ${A_1, ..., A_n} \subseteq {B_1, ..., B_n}$
+- The output is a relation with attribute ${A_1, ..., A_n}$ from $R$.
+  - Duplicates are removed (because the resulting relation forms a set).
+
+## 3.5 Relational Algebra - Basic Operators 3
+
+### Combination Operators
+We can combine relations along the row or the column.
+- To combine relations along the row, we can use the two set operations: _union_ and _difference_.
+- To combine relations along the column, we use the _cartesian product_ operator.
+
+### Set Union
+- Notation: $R_1 \cup R_2$, where:
+  - $R_1$ and $R_2$ are input relations with the same schema
+- The output is a new relation with all tuples in $R_1$ and $R_2$ with no duplicates. The schema is the same as $R_1$ and $R_2$.
+
+### Set Difference
+- Notation: $R_1 - R_2$, where:
+  - $R_1$ and $R_2$ are two input relations with the same schema
+- The output is a new relation with all tuples in $R_1$ but not in $R_2$.
+
+### Cartesian Product
+- Notation: $R_1 \times R_2$, where:
+  - $R_1$ is a relation with attributes $R_1(A_1, ..., A_n)$
+  - $R_2$ is a relation with attributes $R_2(B_1, ..., B_m)$
+- The output is a relation consisting of all pairs of tuples from $R_1$ and $R_2$. The schema is $(A_1, ..., A_n, B_1, ..., B_m)$.
+- We typically need to do extra selection and projection to refine the resulting relation from a Cartesian Product to make it useful.
+![alt text](resources/image.png)
+
+## 3.6 Relational Algebra: Basic Operator for Renaming Schema
+
+### Renaming
+- Notation: $\rho_{S(B_1, ..., B_n)}(R)$, where:
+  - $R$ is an input relation $R(A_1, ..., A_n)$
+- The output is the same relation instance as the input, with the relation name changed to $S$ and attribute names renamed to $(B_1, ..., B_n)$.
+
+## 3.7 Relational Algebra:: Derived Operators
+
+### Set Intersection
+- Notation: $R_1 \cap R_2$
+- Everything else is similar to set union.
+- This is derivable from the set difference operator.
+![alt text](resources/set-intersection.png)
+
+### Theta Join
+- Notation: $R_1 \bowtie_\theta R_2$, where:
+  - $R_1(A_1, ..., A_n)$ and $R_2(B_1, ..., B_m)$ are input relations
+  - $\theta$ is a condition over $R_1$ and/or $R_2$'s attributes
+- The output is the product of $R_1$ and $R_2$ filtered by the condition $\theta$. That is, this can also be expressed as $\sigma_\theta(R_1\times R_2)$.
+- The output schema is $(A_1, ..., A_n, B_1, ..., B_m)$.
+
+### Natural Join
+- Notation: $R_1 \bowtie R_2$, where:
+  - $R_1(A_1, ..., A_n)$ and $R_2(B_1, ..., B_m)$ are input relations
+- The output is all pairs of tuples from $R_1$ and $R_2$ that are matched on their 'common' attributes $\{A_1, ..., A_n\} \cap \{B_1, ..., B_m\}$, a.k.a., the join attributes.
+- The output schema is $\{A_1, ..., A_n\} \cup \{B_1, ..., B_m\}$, which is the resulting set of attributes after we merged the common attributes.
+
+## 3.8 MapReduce for Key-Value Data
+
+### MapReduce
+MapReduce is created by Google in 2004 for simplified data processing over large clusters. Apache Hadoop is an example implementation.
+
+We can apply the MapReduce model in database computing. The model has the following steps:
+- __Map__: apply function $M$ on each data entry $(k_i, v_i)$ in the database to produce a new list of values $[(k_{i1}, v_{i1}),...,(k_{im},v_{im})]$.
+- __Group__: organize the new list of key-value pairs from the result of the _map_ operation by key $k_{ij}$ so that each group is of the form $(k_{ij}, [\text{values with key } k_{ij}])$
+- __Reduce__: apply the reduce function $R$ on the new list of key-value pairs, so that each item will become $[k_{ij}, R(\text{values with key } k_{ij})]$
+
+An example of MapReduce in selecting data in a relational database:
+![alt text](resources/map-reduce.png)
+
+### Food for Thought
+- $M(k,v)$: if (v[0] == brewer and v[1] == "ABInDev") or (v[0] == price and v[1] < 5.0), emit (k,v)
+- e.g., [(Sam Adams, (brewer, Boston Beer)), (Sam Adams, (price, 5.0))] =>
+- [Sam Adams, [(brewer, Boston Beer), (price, 5.0)]]
+- $R(k,v)$: k = Sam Adams, v = [brewer,price] => emit(k, flatten(v))
+
+## Chapter Summary & Misc.
+- The aggregate functions (e.g., sum, median, count, etc.) cannot be implemented in standard relational database because they require 'memory' to accumulate information across different tuples as the processing goes through. 
+
+# Chapter 4 Designing Schemas
+## 4.1 Designing Schemas
+A badly designed schema may lead to _redundancy_, _update anomaly_, and _loss of facts_. Specifically,
+- redundancy refers to the storage of duplicate information, 
+- update anomaly refers to the case when we update such duplicated information, we may not remember to update all occurrences of the value, causing inconsistency, and
+![alt text](resources/schema-anomalies.png)
+- loss of facts refers to the possibility that the student may not have a major, thus we will need to remove the tuple for that student, losing their birthday information.
+![alt text](resources/loss-of-facts.png)
+
+### Questions we are trying to answer
+- How do we consider a schema good? (Normal forms)
+- How do we transform a bad schema to a good one?
+
+## 4.2 Functional Dependencies (FD)
+Functional dependenies are a form of constraints. They need to be part of a schema.
+
+### Definition
+- Notation: $A_1, ..., A_m \rightarrow B_1, ..., B_n$
+- We say $A_1, ..., A_m$ __functionally determines__ $B_1, ..., B_n$
+- This means that as long as the values for $A_1, ..., A_m$ are fixed for tuples, then their values for $B_1, ..., B_n$ must also agree. That is, the mapping from $A_1, ..., A_m$ to $B_1, ..., B_n$ is __functional__ (many-to-one) (这里取函数式的意思).
+- FD depends on your knowledge of the domain!
+
+## 4.3 Keys (Formal Definition)
+### Definition
+A __key__ of a relation $R(A_1, ..., A_n)$ is a set of attributes $K$ that:
+- functionally determines all attributes of $R$, that is, $k \rightarrow A_1, ..., A_n$, and
+- none of its subsets does
+
+A set of attributes containing a key is called a _superkey_.
+
+## 4.4 Reasoning with FDs
+### Basic Rules on FDs: Armstrong's Axioms
+- Reflexivity Rule:
+  - If $B\subseteq A$, then $A\rightarrow B$
+- Augmentation Rule:
+  - If $A\rightarrow B$, then $AC \rightarrow BC$
+- Transitivity Rule:
+  - If $A\rightarrow B$ and $B\rightarrow C$, then $A\rightarrow C$
+
+### Derived Rules
+- Splitting Rule
+  - If $A\rightarrow BC$, then $A\rightarrow B$ and $A\rightarrow C$
+- Combining Rule
+  - If $A\rightarrow B$ and $A\rightarrow C$, then $A\rightarrow BC$
+
+  drinker, bar -> price ?
+  drinker, bar -> beer (given)
+  bar, beer -> price (given)
+  drinker, bar, beer -> drinker, price (augmentation)
+  drinker, bar -> drinker, bar, beer (reflexivity)
+  drinker, bar -> drinker, price (transitivity)
+  drinker, bar -> price (splitting)
+
+## 4.5 Attribute Closures
+We were asking the question "whether {drinker, bar} can determine all attributes given some FDs" earlier, i.e., whether they form a superkey. Now, we are going to ask: "what attributes can {drinker, bar}" determine? This is called the __closure__ of "{drinker, bar}".
+
+### Definition
+- Notation: $\{A_1, ..., A_n\}^+ = \{B_1, ..., B_m\}$
+- This is interpreted as: the closure of $\{A_1, ..., A_n\}$ is $\{B_1, ..., B_m\}$.
+- This means that $\{B_1, ..., B_m\}$ is the maximal set of attributes that can be determined from the set of attributes $\{A_1, ..., A_n\}$ and dependencies $F$.
+
+### Algorithm for Finding Closures
+Given a set of attributes $\{A_1, ..., A_n\}$ for which we are determining the closure and a set of dependencies $F$, let $C = \{A_1, ..., A_n\}$ be the closure. We repeat the following step until $C$ no longer changes:
+- If there is a rule $X_1, ..., X_m\rightarrow Y$ in $F$, and $X_1, ..., X_m$ are all in $C$, and $Y$ is not in $C$:
+  - $C:=C+Y$
+
+## 4.6 Normal Forms
+When refining schemas, we want to maintain the following properties:
+- minimize redundancy
+- avoid information loss
+- preserve dependency
+- ensure good query performance
+
+### First Normal Form
+In the __first normal form__ (1NF), each attribute contains only single atomic value (i.e., no lists).
+
+## 4.7 Boyce-Codd Normal Form (BCNF)
+### Definition
+- A relation $R$ is in BCNF if and only if for every _nontrivial_ FD for $R$ of the form $A\rightarrow B$, $A$ is a superkey for $R$.
+- A _trivial_ FD $A\rightarrow B$ is one such that $B\subseteq A$.
+- Effectively, BCNF ensures that there are no _bad_ FDs (i.e., when we have $A\rightarrow B$ but $A$ is not a superkey).
+
+### BCNF Decomposition
+When a relation $R$ is not in BCNF, we wish to have a way to transform it into BCNF.
+
+#### The Algorithm
+- Input: Relation $R(A,B,C)$, FDs $F$
+- If there exists an FD $A\rightarrow B$ that is _bad_, then
+  - decompose $R(A,B,C)$ into $R_1(A,B)$ and $R_2(A,C)$
+  - compute new FDs for $R_1$ and $R_2$ as $F_1$ and $F_2$
+  - Return $\text{BCNF }(R_1, F_1) \cup \text{BCNF }(R_2, F_2)$
+- Else,
+  - Return $R$ as is
+
+## 4.8 Lossless Decomposition
+Decompositions may be lossy, in that the split relations may not join back to a relation equivalent to the original relation.![alt text](resources/lossy-decomposition.png)
+
+BCNF decomposition is _lossless_.
+
+## 4.9 Dependency-Preserving Decomposition
+### Definition
+A schema $S$ is dependency preserving if, for every FD $f$ of it:
+- $f$ can be checked in a table $T$ in $S$, or
+- $f$ can be implied by other FDs that can be checked in a single table in $S$.
+
+> Intuitively, this means that all FDs should be able to be checked without joining tables after the decomposition.
+
+![alt text](resources/dependency-preserving-decompositioni.png)
+
+## 4.10 3rd Normal Form
+### Definition
+A relation $R$ is in 3NF if and only if:
+- for every nontrivial FD $A\rightarrow B$ for $R$,
+  - $A$ is a superkey for $R$, or
+  - $B$ is a __prime attribute__ (i.e., a member of a key) for $R$.
+
+### Why is 3NF acceptable?
+3NF is both lossless decomposition and dependency preserving.
+
+It removes "bad FDs" mostly, except those involving key attributes. This way, we avoid splitting a key across two relations.
+
+## 4.11 Multi-valued Dependencies
+There are many different kinds of dependencies than FDs, for example,
+- multivalued dependencies (MVD),
+- inclusion dependencies (IND), 
+- join dependencies (JD)
+
+### Intuition
+A multi-valued dependency stipulates that a set of attributes may determine a set of values of another attribute, instead of a unique value (as in FD). We use the double arrow symbol $\twoheadrightarrow$ to denote this.
+![alt text](resources/multi-value-dependency.png)
+
+### Definition
+- Notation: $A_1, ..., A_m \twoheadrightarrow B_1, ..., B_m$
+- We say $A_1, ..., A_m$ multidetermines $B_1, ..., B_m$.
+- This means:
+  - If two tuples have the same $A_1, ..., A_m$ values, then swapping their $B_1, ..., B_n$ values will yield two tuples that are also in the relation.
+- Note, this _will_ lead to some degree of redundancy.
+
+FD is a special case of MVD.
+
+# Chapter 5 Querying Databases
