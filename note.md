@@ -232,4 +232,138 @@ A multi-valued dependency stipulates that a set of attributes may determine a se
 
 FD is a special case of MVD.
 
-# Chapter 5 Querying Databases
+# Chapter 5 Querying Databases: The Relational Way (1)
+
+## 5.1 Querying Databases
+> _Why do we design databases?_
+> 
+> Because we want them to answer questions about the application we are modelling via queries.
+
+### Query Languages
+A __query language__ is a "computer language" for asking questions on the data stored in a database.
+
+The design of a query language depends on:
+- data model: how is data organized in the database?
+- query capabilities: what types of questions can be asked?
+- target users: what types of user will use this language (e.g., programmers vs non-programmers)?
+
+An example query language may look as follows:
+![alt text](resources/query-by-example.png)
+
+## 5.2 SQL
+
+### Background
+SQL stands for _Structured Query Language_. It is a language for querying and manipulating data, created by IBM in 1970s. 
+
+SQL is _declarative_, that is, you only state _what_ you want, and not _how_ you want it. One benefit of declarative queries is that they can be optimized "just-in-time", using the latest information on the data stored.
+
+## 5.3 Basic Form
+
+### Basic Form: SELECT-FROM-WHERE
+There are three parts in the SELECT-FROM-WHERE basic form:
+- SELECT $A_1, ..., A_n$: the attributes to return
+- FROM $R_1, ..., R_m$: the relations to query from
+- WHERE $C$: the condition the result set must satisfy
+
+### Query Definition
+- Input: Relations $R_1, ..., R_m$ that form a subset of relations in the database
+- Output: A new relation with attributes $A_1, ..., A_n$
+- Note that the query $Q$ is closed in the "relation space", in that, both its input and output are relations.
+- Thus, we can think of a query _as a relation_ (e.g., views).
+
+### Meaning of a Query
+Given a SQL query
+```SQL
+SELECT A_1, ..., A_n
+FROM R_1, ..., R_m
+WHERE C
+```
+we may translate it to relational algebra as follows:
+$$\pi_{A_1, ..., A_n}(\sigma_C(R_1 \times ... \times R_m))$$
+
+That is, we first perform cartesian product between relations $R_1, ..., R_m$. Then, we filter the results with the condition $C$. Finally, we output the filtered tuples with attributes $A_1, ..., A_n$.
+
+### FROM Clause
+N/A
+
+### SELECT Clause
+- Not only can we select attributes $A_1, ..., A_n$ with the SELECT clause, but we can also transform expressions into attributes: `SELECT ..., expression AS name, ...`.
+  - Here the expression is a combination of one or more values, operators, or SQL functions that evaluates to a value.
+
+### WHERE Clause
+- Conditions in the WHERE clause may take on various forms. For example, we may directly reference attributes, perform arithmetic operations, string operations (e.g., `UPPER(bar) = 'GREEN BAR'`), pattern matching with `LIKE` operator (e.g., `bar LIKE '%Green%'`).
+  - In pattern matching, `%` is used to match any _string_, and `_` is used to match any _character_.
+
+## 5.4 Null Values
+### Motivation
+Observe that the following two quries are NOT equivalent:
+```SQL
+SELECT bar, beer FROM Sells WHERE price < 5.00 OR price >= 5.00
+```
+```SQL
+SELECT bar, beer FROM Sells
+```
+where there are `NULL` values for the attribute `price` in the result tuples.
+
+### Null Values
+Tuples in SQL relations may have `NULL` as value for some attributes due to various reason. Two common ones are:
+- missing values: we don't know what the value should be
+- inapplicable: the value is not relevant in the context
+
+### Comparing with NULL Values
+- In SQL, the result of a logical expression may be either `TRUE`, `FALSE`, or `UNKNOWN`, i.e., __3-valued logic__. 
+- When `NULL` is compared with any value, the result is `UNKWOWN`.
+- A tuple is returned from a query only if its truth value is `TRUE`. That is, any tuples with truth value `UNKWOWN` from the condition is _not_ returned.
+
+### Truth Table for 3-Valued Logic
+|AND|Unkwown|
+|---|---|
+|True|Unknown|
+|False|False|
+|Unknown|Unknown|
+---
+|OR|Unkwown|
+|---|---|
+|True|True|
+|False|Unknown|
+|Unknown|Unknown|
+---
+|NOT|Unknown|
+|---|---|
+|-|Unknown|
+
+### Testing for NULL
+We can use the `IS NULL` or `IS NOT NULL` operator to select/de-select `NULL` values.
+
+## 5.5 Subqueries
+### Definition
+- A __subquery__ is parenthesized SELECT-FROM-WHERE query contained in another query.
+- It itself may contain subqueires.
+- It can either return a relation or a single constant value.
+- It can be used in anywhere: FROM, WHERE, or SELECT.
+
+### Subqueries Returning Single Constants
+- If a subquery is guaranteed to return a _single_ tuple with a _single_ attribute, then its result can be used as scalar value, which is a special case of a relation.
+- These subqueries may be used in WHERE or SELECT.
+- The "single" tuple in the result may be guaranteed by, for example:
+  - key constraints: if a key is specified in the condition, then we can be sure that only one tuple will be matched
+  - aggregate functions that produces a scalar value
+
+### Subqueries that Return Relations
+- This is the more general case.
+- These subqueries can be used anywhere a relation is expected, i.e., WHERE and FROM.
+
+### Using Relation-Subqueries in WHERE Clause
+We will need to define new operators on sets of tuples now that we are working with subqueries that can return relations.
+
+- `IN` / `NOT IN`: tests if the tuple is a member of the relation
+  - `tuple IN relation`
+- `EXISTS`/`NOT EXIST`: tests if the relation is not empty
+  - `EXISTS relation`
+- `ANY`
+  - `X <op> ANY relation`: tests if the condition `X <op> Y` holds for at least one `Y`, which is any value from the selected attribute from the relation.
+  - This operator requires that `relation` has only one attribute, so that `X <op> Y` is an operation on scalar values.
+  - `op` can be any binary operators on scalars (e.g., $=, <=$, etc.).
+- `ALL`
+  - `X <op> ALL relation`: tests if `X <op> Y` holds for _all_ tuples in the relation, where `Y` is any value from the relation.
+  - Similar to `ANY`, `ALL` also requires that the relation has one attribute.
