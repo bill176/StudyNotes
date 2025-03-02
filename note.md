@@ -1,3 +1,41 @@
+# Chapter 3: Computing on Data
+## 3.1 Computing on Data
+> Why do we need computing on data?
+> 
+> Because often the data cannot be used "as-is". We need computing to transform them into the format that is usable to us.
+
+The exact computing operation will depend on the physical data model involved, e.g., relations, key-value pairs, documents, or graphs. Some computing operations are:
+- relational data:
+  - relational algebra (fonudation of the SQL language)
+  - datalog (a logical programming language for querying)
+- graph data:
+  - any operations that can be applied to graphs (finding neighbours, shortest paths, etc.)
+- key-value data:
+  - MapReduce
+
+## 3.2 Relational Algebra
+### Algebra
+An __algebra__ is a mathematical system with 
+- operands: values to be operated upon
+- operators: symbols denoting the operation to be performed over operands and generates new values.
+
+### Relational Algebra Overview
+- Operands: relations
+- Operators:
+  - reduction: to make one relation smaller 
+    - selection
+    - projection
+  - combination: to combine two relations
+    - set operators (union, difference)
+    - cartesian product
+  - renaming: to change attribute names
+  - other derived operators:
+    - set intersection
+    - joins
+
+## 3.3 Relational Algebra - Basic Operators 1
+See [3.4]() and [3.5]() for detailed introduction to basic operators
+
 ## 3.4 Relational Algebra - Basic Operators 2
 
 ### Reduction Operators
@@ -49,7 +87,7 @@ We can combine relations along the row or the column.
   - $R$ is an input relation $R(A_1, ..., A_n)$
 - The output is the same relation instance as the input, with the relation name changed to $S$ and attribute names renamed to $(B_1, ..., B_n)$.
 
-## 3.7 Relational Algebra:: Derived Operators
+## 3.7 Relational Algebra: Derived Operators
 
 ### Set Intersection
 - Notation: $R_1 \cap R_2$
@@ -73,21 +111,16 @@ We can combine relations along the row or the column.
 ## 3.8 MapReduce for Key-Value Data
 
 ### MapReduce
-MapReduce is created by Google in 2004 for simplified data processing over large clusters. Apache Hadoop is an example implementation.
+MapReduce was created by Google in 2004 for simplified data processing over large clusters. Apache Hadoop is an example implementation.
 
-We can apply the MapReduce model in database computing. The model has the following steps:
+We can apply the MapReduce model in database computing. Suppose we have a database $DB=[e_1, ..., e_n]$, where $e_i=(k_i,v_i)$ is a key-value pair. The model has the following steps:
 - __Map__: apply function $M$ on each data entry $(k_i, v_i)$ in the database to produce a new list of values $[(k_{i1}, v_{i1}),...,(k_{im},v_{im})]$.
+  - Note that in practice, for every single key-value pair $(k_i,v_i)$, the map fuction applied to that key-value pair $M(k_i,v_i)$ may produce a _list_ of new key-value pairs, a _single_ key-value pair, or _no values_ at all.
 - __Group__: organize the new list of key-value pairs from the result of the _map_ operation by key $k_{ij}$ so that each group is of the form $(k_{ij}, [\text{values with key } k_{ij}])$
 - __Reduce__: apply the reduce function $R$ on the new list of key-value pairs, so that each item will become $[k_{ij}, R(\text{values with key } k_{ij})]$
 
 An example of MapReduce in selecting data in a relational database:
 ![alt text](resources/map-reduce.png)
-
-### Food for Thought
-- $M(k,v)$: if (v[0] == brewer and v[1] == "ABInDev") or (v[0] == price and v[1] < 5.0), emit (k,v)
-- e.g., [(Sam Adams, (brewer, Boston Beer)), (Sam Adams, (price, 5.0))] =>
-- [Sam Adams, [(brewer, Boston Beer), (price, 5.0)]]
-- $R(k,v)$: k = Sam Adams, v = [brewer,price] => emit(k, flatten(v))
 
 ## Chapter Summary & Misc.
 - The aggregate functions (e.g., sum, median, count, etc.) cannot be implemented in standard relational database because they require 'memory' to accumulate information across different tuples as the processing goes through. 
