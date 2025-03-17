@@ -1,3 +1,51 @@
+# Chapter 2: Physical Data Modeling
+
+## 2.5 Translating Subclasses
+> Relational Model itself is not object-oriented. Therefore, object features were added to new data models to support constructs from OOP (e.g., subclassing).
+
+### Options for Representing Subclasses
+- ER Approach
+- Object-oriented Approach
+- Null-value Approach
+
+When deciding which option to use, we need to consider the performance for common queries as well as the space implications.
+
+### Option 1: ER Approach
+The ER model suggests that:
+- a subclass entity has its own additional attributes, and
+- it relates to the superclass via the "is-A" relationship.
+
+Therefore, we may represent the subclass as a separate relation with only the additional attributes. This relation can be linked back to the superclass relation via its key.
+![alt text](resources/er-approach.png)
+Note that the new attribute "color" is stored in a separate table `Ales` from the main `Beers` table. They can be linked by the `name` attribute.
+
+### Option 2: OO Approach
+The object-oriented model suggests that:
+- a subclass should _inherit_ all attributes from the superclass.
+
+Therefore, we may store the subclass as a separate relation from the superclass, with all of its attributes inherited from the superclass, as well as its own attributes.
+![alt text](resources/oo-approach.png)
+
+### Option 3: Null-Value Approach
+The main idea behind this approach is "one size fits all".
+
+Therefore, we represent the subclass in the same relation as the superclass. This relation will have all the attributes in both the subclass and the superclass. For places where an attribute doesn't apply, simply use the value `NULL` to signify that.
+![alt text](resources/null-value-approach.png)
+
+### Deciding on an Option
+Different queries will benefit from different modeling choices. For example, the query on color of ales will require a different sequence of operations from the query on the beer produced by a brewer in the following example:
+![alt text](resources/choosing-subclass-1.png)
+
+![alt text](resources/choosing-subclass-2.png)
+
+## 2.6 Post-Relational - Object-base Modeling
+An irreconcilable difference when an application is interacting with a database is __object-relation impedance mismatch__. This refers to the difference between objects, which exists in the world of applications and tuples, which is introduced in the world of relations. Specifically, the differences may be categorized as:
+- __identifiers__: objects can be uniquely identified by pointers, whereas tuples can only be distinguished by values
+- __nesting__: objects can support nesting but tuples can only store simple valuse
+- __methods/functions__: objects can contain methods but tuples only have attributes
+- __inheritance__: objects (classes) may inherit from a superclass but relations cannot
+- __encapsulation__: objects can hide internal implementation but tuples cannot
+
 # Chapter 3: Computing on Data
 ## 3.1 Computing on Data
 > Why do we need computing on data?
@@ -400,3 +448,149 @@ We will need to define new operators on sets of tuples now that we are working w
 - `ALL`
   - `X <op> ALL relation`: tests if `X <op> Y` holds for _all_ tuples in the relation, where `Y` is any value from the relation.
   - Similar to `ANY`, `ALL` also requires that the relation has one attribute.
+
+# Chapter 6 Querying Databases: The Non-Relational Ways (1)
+
+## 6.1 Motivations
+There are multiple ways of physically storing the data in databases other than the relation approach (where data are organized into tables that can be joined together when queried). We could also store data in documents or graphs. Do we still want to "join" or "assemble" these entities when quering?
+
+A question we need to answer when querying non-relational data is, 
+- what are the key "concepts" that we wish to support?
+  - In relational databases, we have the concepts of `reduction`, `selection`, `projection`, `aggregation`, etc.
+- Are these concepts enough to fulfill queries we want to ask?
+- How do we implement these concepts?
+- How are they different from the relational model?
+
+## 6.2 Querying Document Databases - MongoDB
+
+### Concept Mapping from the Relational World
+In relational databases, data are stored in databases, which consist of tables (relations) that have rows (tuples). In MongoDB, data are stored in databases, organized into __collections__ of __documents__.
+![alt text](resources/sql-mongo.png)
+
+### Shell Methods
+__Shell methods__ are the main way to interact with a MongoDB.
+![alt text](resources/mongo-shell.png)
+
+Note that the ones listed above are __collection methods__, meaning that they operate on collections. That is, the methods either:
+- operate within the scope of an individual collection, or
+- operate on one collection from another (primary collection), i.e., asymmetrical.
+
+## 6.3 Querying Document Databases: Basic Operations
+
+### The basic operation: `db.collection.find()`
+`db.collection.find(query, projection)`
+- `query`: (optional) the filter to apply, e.g.,
+  - `{brewer: "AB InDev"}` for equality condition
+  - `{price: {"$lt": 5}}` for inequality condition
+- `projection`: (optional) the fields to return
+  - E.g., `{name: 1, "_id": 0}`
+  - To include a field, use the value `1`. Otherwise, use `0`.
+
+### Binary Operations: Union, Difference, Cartesian Product
+> Note: MongoDB does not support join or operations on multiple collections from its design philosophy. This is because all relevant information to a piece of data has been stored within a document (i.e., denormalized). There is _typically_ no need to join with other relations to retrieve more information.
+
+Because of the lack of native support for multi-collection operations, we will have to implement the logic ourselves. For example, if we want to get a list of beers that are made by the brewer "AB InBev" and are priced less than $5, we will have to make two separate `find()` calls to `Beers` and `Sells` collection, and then perform the intersection on the result sets ourselves.
+
+### Renaming
+Renaming is not supported natively via the `find()` function. However, a similar construct in Aggregate can achieve similar effects.
+
+### Summary
+![alt text](resources/find-summary.png)
+
+## 6.4 Querying Document Databases: Complex Structures
+Compared to relational databases, where data is normalized, document databases _denormalize_ data, often leading to complex nested document structures.
+
+When dealing with complex structures, we need to be able to support the following operations:
+- complex values (the value in the condition that we are comparing against is a subdocument)
+  - e.g., `db.CompleteDrinkers.find({frequents: {name: "Green Bar", addr: "Green St"}})`
+- complex attributes
+  - e.g., `db.CompleteDrinkers.find({"frequents.addr": "Green St"})`
+- complex operations
+  - e.g., `db.CompleteDrinkers.find({"drinks.beer.name": {$all: ["Bud", "Sam Adams"]}})`
+
+### Embedding vs Referencing
+Embedding is when we put a subdocument under a parent document as-is, with its full content, whereas referencing if where we simply leave a reference to the nested object, which can be retrieved at run-time.
+![alt text](resources/embed-reference.png)
+
+> Again, if we wish to query for a nested field that was referencing to another document, there is no native support for it. We would have to do it ourselves.
+
+## 6.5 Aggregates
+### Basic Form
+`db.collection.aggregate(pipeline, options)`
+- `pipeline`: an array of aggregation operations/stages to perform
+- `options`: configuration for the `aggregate` function
+
+### Stages
+The stages in `aggregate` are similar to that of relational databases.
+![alt text](resources/aggregation-stages.png)
+
+> Note that `find()` is actually a special case of `aggregate()`. We can write `find({condition}, {attributes})` as `aggregate({$match: {conditions}}, {$project: {attributes}})`. But `aggregate()` can support many more operations, including __renaming__.
+
+To rename a field, we can simply supply the new attribute name in the `$project` stage like this: `{$project: {"_id": 0, beer: "$name"}}`. This will rename the attribute `name` to `beer`.
+
+### Spotlight: The `Unwind` Opeator
+This operator is especially useful when there is an array of values in an attribute of a document. For example, we have the following complement document:
+```JSON
+{
+  "name": "My Bar",
+  "addr": "123 This Rd.",
+  "sells": [
+    {
+      "beer": {
+        "name": "Bud",
+        "alcohol": 5
+      },
+      "price": 5,
+    },
+    {
+      "beer": {
+        "name": "Bud Light",
+        "alcohol": 2.5
+      },
+      "price": 4.5,
+    }
+  ]
+}
+```
+After applying the unwind operator, we get the following two documents:
+```JSON
+[
+  {
+    "name": "My Bar",
+    "addr": "123 This Rd.",
+    "sells": {
+      "beer": {
+        "name": "Bud",
+        "alcohol": 5
+      },
+      "price": 5,
+    }
+  },
+  {
+    "name": "My Bar",
+    "addr": "123 This Rd.",
+    "sells": {
+      "beer": {
+        "name": "Bud Lite",
+        "alcohol": 2.5
+      },
+      "price": 4.5,
+    }
+  },
+]
+```
+
+This could be useful for any subsequent aggregation processing.
+
+## 6.6 The Case for Joins
+
+### Why do we need joins?
+- To reduce redundancy
+- To avoid arbitrarily deep nesting of documents
+- To avoid having to constantly reorganize the database to fit the query need
+
+According to MongoDB, there are often a need to interact with multiple collections at the same time, especially when it comes to analytics and reporting.
+
+### Joins in MongoDB
+MongoDB added support for __outer (left) equi-join__. This performs the following action:
+- For every document in the left collection, find all documents with equi-matching condition in the right collection.
