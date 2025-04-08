@@ -594,3 +594,124 @@ According to MongoDB, there are often a need to interact with multiple collectio
 ### Joins in MongoDB
 MongoDB added support for __outer (left) equi-join__. This performs the following action:
 - For every document in the left collection, find all documents with equi-matching condition in the right collection.
+
+### Additional Features in MongoDB
+
+#### Indexes
+Just like relational databases, indexes are also supported in MongoDB. Therea are three types of indexes available:
+- Single Field Index
+  - Best suited for querying on a single "simple" field frequently (e.g., id)
+- Single Field Index on an embedded document
+  - Best suited for querying on a single "complex" field frequently (e.g., an embedded object field `location` with subfields `state`, `city`, etc.)
+  - This index is used only when _all_ the subfields within an embedded document are specified.
+- Compound Index
+  - Best suited for querying on multiple fields frequently
+  
+
+## 6.7 Querying Graph Databases: Neo4j
+
+### Cypher: The Neo4j Query Language
+- a declrative language
+- used for querying graph databases
+
+## 6.8 Querying Graph Databases: Basic Operations
+- matched-where-return
+- relation to sql
+- use patterns in cypher
+
+### Patterns
+We can define patterns in Neo4j to match __nodes__ and __relationships__. 
+
+For nodes, we can write it as `(b: Beer {name: "Bud"})`. Here, `b` is the variable name we defined for the matched entities, that we may refer to later; `Beer` is the name of the node (table) to be matched against; `{name: "Bud"}` is the condition of the match.
+
+For relationships, we can write it as `(bar: Bar) - [s: Sells] -> (beer: Beer)`. Here, the square bracket `[s: Sells]` defines the relationship between the two nodes: `Bar` and `Beer`.
+
+We can also compose patterns to form more complex ones. For example,
+- `(bar: Bar) - [s: Sells] -> (beer: Beer) <- [d: Drinks] - (drinker: Drinker)`
+  - `Bar` is related to `Beer` via the `Sells` relationship, and `Drinker` is related to `Beer` via the `Drinks` relationship.
+- `(bar: Bar) - [s: Sells] -> (beer: Beer), (bar: Bar {addr: "Green St"})`
+  - Note the comma `,` in the pattern. Here we are further specifying the condition of the `Bar` entity to be matched on top of the "joined" condition.
+
+### Matching Nodes
+The basic format is `(var: Label)`. For example, to write a query that returns
+> beers with alcohol greater than 5%,
+
+we may write
+|SQL|Neo4j Cypher|
+|---|---|
+|__FROM__ Beer beer|__MATCH__ (beer: Beer)|
+|__WHERE__ beer.alcohol > 0.05|__WHERE__ beer.alcohol > 0.05|
+|__SELECT__ beer.name, beer.alcohol|__RETURN__ beer.name, beer.alcohol|
+
+### Matching Relationships
+The basic form is: `(...) - [var: Label] -> (...)`. Note that since a relationship connects two entities, we will need to specify these two entities when querying. (Note that it is possible to omit the two nodes in the query if none of their attributes are returned.)
+
+![alt text](resources/neo4j-relationship.png)
+
+Note that this is different between SQL and Neo4j because relationships are themselves entities. We will need to fully specify the two ends of the relationship (edge).
+
+### Matching with Properties
+We can also optionally specify properties of the node/relationship to be matched. This is equivalent to filtering out results in the WHERE clause.
+
+![alt text](resources/neo4j-property.png)
+
+The top query and the bottom query are equivalent.
+
+### Joining Nodes and Relationships
+![alt text](resources/neo4j-join.png)
+
+## 6.9 Querying Grpah Databases: Advanced Capabilities
+- aggregate
+- subquery chaining
+
+### Aggregates in Cypher
+- no separate `GROUP BY` clause needed: we simply place them together with the rest of the `RETURN` clause
+  - E.g., RETURN $A_1$, ..., $A_n$, $F_1$, ..., $F_m$, where $A_i$ is an aggregate result.
+- no separate `HAVING` clause either: we simply use chaining of the `WHERE` clause.
+
+### Chaining in Cypher
+The basic `MATCH-WHERE-RETURN` structure may be extended to a pipeline `MATCH-WHERE-(WITH-MATCH-WHERE)*-RETURN`.
+
+`WITH` clause is the connection between stages of the query. It can specify variables/functions to pass on to further stages, and give aliases.
+
+Example: find the beer with the highest price.
+Query: `MATCH () - [s: Sells] - () WITH MAX(s.price) AS maxPrice MATCH () - [s:Sells] -> (beer: Beer) WHERE s.price = maxPrice RETURN beer.name, s.price`
+
+# Chapter 7 Manipulating Databases
+## 7.2 Organizing Databases
+Most DBs support the three levels: database -> schema -> table (e.g., PostgreSQL, Oracle). Some DBs support two levels of organization: database -> table (e.g., MySQL).
+
+### Creating Tables
+In MySQL, when creating tables, we follow the format of `CREATE TABLE <name> (<elements>)`, where each `<element>` is `attribute + constraint`:
+- `attribute`: name, type
+  - e.g., `bar char(30)`
+- `constraint`: optional; it might be `PRIMARY KEY`, `FOREIGN KEY`, `UNIQUE`, `NOT NULL`, `DEFAULT <value>`
+
+## 7.3 Modifying Databases
+When inserting data into tables, in addition to adding them by values (`INSERT INTO R (a1, ..., an) VALUES (v1, ..., vn)`), we can also insert the result of a query (`INSERT INTO R (a1, ..., an) (SUBQUERY)`).
+
+## 7.4 Augmenting Databases: Indexes
+An index is a "map" of a table that records where different values of an attribute is stored in order to speed up the querying process.
+
+DBMS may create indexes for important attributes automatically (e.g., primary key attributes).
+
+DBMS will make use of indexes, if available, to construct more efficient query plans.
+
+## 7.5 Augmenting Databases: Views
+Databases contain "base tables" to store the essential information, but different users may want to access the information in different "perspectives". They may only want to see an organized subset of the information. Views act as virtual tables to provide this alternative perspective.
+
+To create a view, we use
+```SQL
+CREATE VIEW <name> AS <SUBQUERY>
+```
+We can query them just like base tables.
+
+### Updating Views
+Note some views are not updatable! This could be because
+- some views are missing required values from the base tables in order to insert new entries;
+- some views may contain aggregates that cannot map back to individual entries in the base table;
+- when multiple tables are joined in a view, it can be complicated to resolve the inserted data down to the base tables.
+
+In reality, determining whether a view is updatable is a complicated process. But intuitively, a view is updatable if
+- it selects "enough" attributes from a base table
+- it only involes one table
